@@ -79,7 +79,7 @@ module.exports = (config, models) => {
             sellerSubscription.status = platformSubscriptionData.status;
             if (sellerSubscription.status === 'active') {
                 await subscriptionModel.activateSubscription(sellerSubscription.id, sellerSubscription.platform_subscription_id);
-                if (existingSubscription) {
+                if (existingSubscription && existingSubscription.id.toString() !== sellerSubscription.id.toString()) {
                     await subscriptionModel.cancelSubscription(existingSubscription.id);
                 }
                 success = true;

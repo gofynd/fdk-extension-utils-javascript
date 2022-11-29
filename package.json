@@ -18,7 +18,8 @@
       "node_modules/*",
       "coverage/*",
       "spec.js",
-      "models/base-models/*"
+      "models/base-models/*",
+      "examples/*"
     ],
     "reporter": [
       "html",

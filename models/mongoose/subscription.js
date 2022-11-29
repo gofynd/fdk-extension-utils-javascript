@@ -58,7 +58,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
     }
 
     async getSubscriptionById(subscriptionId) {
-        const dbSubscription = await this.model.findOne({ _id: subscriptionId });
+        const dbSubscription = await this.model.findOne({ _id: ObjectId(subscriptionId) });
         if(!dbSubscription) {
             return dbSubscription;
         }
@@ -66,7 +66,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
     }
 
     async getSubscriptionByPlatformId(platformSubscriptionId, companyId) {
-        const dbSubscription = await this.model.findOne({ platform_subscription_id: platformSubscriptionId, company_id: companyId });
+        const dbSubscription = await this.model.findOne({ platform_subscription_id: ObjectId(platformSubscriptionId), company_id: companyId });
         if(!dbSubscription) {
             return dbSubscription;
         }
