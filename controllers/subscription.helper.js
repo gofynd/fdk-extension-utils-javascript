@@ -20,35 +20,51 @@ module.exports = (config, models) => {
     async function subscribePlan(companyId, planId, platformClient, callbackUrl) {
         companyId = Number(companyId);
         const plan = await planModel.getPlanById(planId);
-        let response = await platformClient.billing.createSubscriptionCharge({
-            extensionId: config.extension_id,
-            body: {
-                name: plan.name,
-                line_items: [
-                    {
-                        name: plan.name,
-                        term: plan.tagline,
-                        price: {
-                            amount: plan.price.amount,
-                            currency_code: plan.price.currency
-                        },
-                        pricing_type: plan.pricing_type || 'recurring',
-                        recurring: {
-                            interval: plan.interval
+        if (!plan) {
+            throw new Error(`plan not found for planID ${planId}`);
+        }
+        let platformResponse;
+        if (plan.price?.amount >= 1) {
+            // billing service expects amount to be at least 1
+            platformResponse = await platformClient.billing.createSubscriptionCharge({
+                extensionId: config.extension_id,
+                body: {
+                    name: plan.name,
+                    line_items: [
+                        {
+                            name: plan.name,
+                            term: plan.tagline,
+                            price: {
+                                amount: plan.price.amount,
+                                currency_code: plan.price.currency
+                            },
+                            pricing_type: plan.pricing_type || 'recurring',
+                            recurring: {
+                                interval: plan.interval
+                            }
                         }
-                    }
-                ],
-                return_url: callbackUrl
+                    ],
+                    return_url: callbackUrl
+                }
+            });
+        } else {
+            // free plan will have 0 amount
+            platformResponse = {
+                subscription: {
+                    _id: null
+                },
+                confirm_url: null
             }
-        });
+        }
+
         await subscriptionModel.createSubscription(
             companyId,
             planId,
-            response.subscription._id
+            platformResponse.subscription._id
         );
         return {
             platform_subscription_id: response.subscription._id,
-            redirect_url: response.confirm_url
+            redirect_url: platformResponse.confirm_url
         }
     };
 
