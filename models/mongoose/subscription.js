@@ -6,6 +6,7 @@ const deepExtend = require("deep-extend");
 const { omit } = require("../../helpers/common");
 const Subscription = require("../entities/subscription");
 const BaseSubscriptionModel = require("../base-models/base_subscription_model");
+const { SubscriptionStatus } = require("../../helpers/constants");
 
 const schema = new Schema({
     company_id: {
@@ -13,16 +14,10 @@ const schema = new Schema({
         required: true,
         immutable: true
     },
-    /**
-     * @todo discuss
-     * On the billing service, `status` is defined as `string` and `nullable`
-     * Will this cause mongoose type issues?
-     * However, we have seen only 3 status `pending`, `active`, `expired` coming from billing service 
-     */
     status: {
         type: String,
         required: true,
-        enum: ["pending", "active", "cancelled", "expired"]
+        enum: Object.values(SubscriptionStatus)
     },
     /**
      * ObjectID returned from platform after subscription
@@ -59,7 +54,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
     }
 
     async getActiveSubscription(companyId) {
-        const dbSubscription = await this.model.findOne({ company_id: companyId, status: "active" });
+        const dbSubscription = await this.model.findOne({ company_id: companyId, status: SubscriptionStatus.active });
         if(!dbSubscription) {
             return dbSubscription;
         }
@@ -86,7 +81,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
         return new Subscription (await this.model.create({
             company_id: companyId,
             plan_id: planId,
-            status: 'pending',
+            status: SubscriptionStatus.pending,
             platform_subscription_id: new ObjectId(platformSubscriptionId)
         }));
     }
@@ -94,7 +89,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
     async createFreeSubscription(companyId, planId) {
         return new Subscription (await this.model.create({
             company_id: companyId,
-            status: 'active',
+            status: SubscriptionStatus.active,
             plan_id: planId,
         }));
     }
@@ -116,7 +111,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
 
     async activateSubscription(subscriptionId, platformSubscriptionId) {
         const dbSubscription = await this.model.findOne({ _id: new ObjectId(subscriptionId) });
-        dbSubscription.status = 'active';
+        dbSubscription.status = SubscriptionStatus.active;
         dbSubscription.platform_subscription_id = platformSubscriptionId;
         dbSubscription.activated_on = (new Date()).toISOString();
         await dbSubscription.save();
@@ -124,12 +119,12 @@ class SubscriptionModel extends BaseSubscriptionModel{
     }
 
     /**
-     * Sets the existing subscription `status` to `active` or `expired`
+     * Sets the existing subscription `status` to `cancelled` or `expired`
      * @param {string | number | Types.ObjectId} subscriptionId 
-     * @param {undefined | 'expired' | 'cancelled'} status
+     * @param {undefined | 'expired' | 'cancelled'} status if `status` is undefined, the default value is `cancelled`
      * @returns {Subscription} Subscription Object
      */
-    async cancelSubscription(subscriptionId, status = 'cancelled') {
+    async cancelSubscription(subscriptionId, status = SubscriptionStatus.cancelled) {
         const dbSubscription = await this.model.findOne({ _id: new ObjectId(subscriptionId) })
         dbSubscription.status = status;
         dbSubscription.cancelled_on = (new Date()).toISOString();

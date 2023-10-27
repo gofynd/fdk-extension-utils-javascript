@@ -1,4 +1,6 @@
 'use strict';
+const { SubscriptionStatus } = require("../helpers/constants");
+
 
 module.exports = (config, models) => {
 
@@ -26,7 +28,7 @@ module.exports = (config, models) => {
              *  status: "active" | "pending" | "expired"
              * }}
              * There are more properties available, but we need only two here.
-             * For the whole list @see https://github.com/gofynd/fdk-client-javascript/blob/43aeeeceef69edb64fcb92db28e77b2831878efa/documentation/platform/BILLING.md EntitySubscription
+             * For the whole list checkout [EntitySubscription]{@link https://github.com/gofynd/fdk-client-javascript/blob/43aeeeceef69edb64fcb92db28e77b2831878efa/documentation/platform/BILLING.md#EntitySubscription }
              */
             const platformSubscriptionData = platformClient.billing.getSubscriptionCharge({
                 extensionId: config.extension_id,
@@ -153,7 +155,7 @@ module.exports = (config, models) => {
                 }
             }
             sellerSubscription.status = platformSubscriptionData.status;
-            if (sellerSubscription.status === 'active') {
+            if (sellerSubscription.status === SubscriptionStatus.active) {
                 await subscriptionModel.activateSubscription(sellerSubscription.id, sellerSubscription.platform_subscription_id);
                 if (existingSubscription) {
                     await subscriptionModel.cancelSubscription(existingSubscription.id);
