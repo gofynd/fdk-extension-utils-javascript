@@ -7,12 +7,50 @@ module.exports = (config, models) => {
         planModel
     } = models;
 
-    async function getActiveSubscription(companyId) {
+    /**
+     * @param {string | number} companyId 
+     * @param {undefined | *} platformClient if provided, will check for the current status of the subscription
+     * @returns {Promise<Subscription | null>} Subscription object if found, null otherwise
+     */
+    async function getActiveSubscription(companyId, platformClient) {
         companyId = Number(companyId);
         const sellerSubscription = await subscriptionModel.getActiveSubscription(companyId);
 
         if (!sellerSubscription) {
             return null;
+        }
+        if(platformClient) {
+            /**
+             * @type {{
+             *  _id: string,
+             *  status: "active" | "pending" | "expired"
+             * }}
+             * There are more properties available, but we need only two here.
+             * For the whole list @see https://github.com/gofynd/fdk-client-javascript/blob/43aeeeceef69edb64fcb92db28e77b2831878efa/documentation/platform/BILLING.md EntitySubscription
+             */
+            const platformSubscriptionData = platformClient.billing.getSubscriptionCharge({
+                extensionId: config.extension_id,
+                subscriptionId: sellerSubscription?.toString() ?? ''
+            });
+            if (!platformSubscriptionData) {
+                /**
+                 * subscriptionId does not exist
+                 */
+                console.error(`Possible hack to get subscription with id ${sellerSubscription.platform_subscription_id}`)
+                return null;
+            }
+            if (platformSubscriptionData.status === sellerSubscription.status) {
+                return sellerSubscription;
+            }
+
+            /**
+             * `platformSubscriptionData.status` has probably `expired`
+             * change the status to whatever was sent from billing service
+             */
+            return await subscriptionModel.cancelSubscription(
+                sellerSubscription.id,
+                platformSubscriptionData.status
+            )
         }
         return sellerSubscription;
     };
@@ -47,30 +85,52 @@ module.exports = (config, models) => {
                     return_url: callbackUrl
                 }
             });
+            await subscriptionModel.createSubscription(
+                companyId,
+                planId,
+                platformResponse.subscription._id
+            );
         } else {
             // free plan will have 0 amount
             platformResponse = {
-                subscription: {
-                    _id: null
-                },
+                subscription: {},
                 confirm_url: null
             }
+            await subscriptionModel.createFreeSubscription(
+                companyId,
+                planId
+            );
         }
 
-        await subscriptionModel.createSubscription(
-            companyId,
-            planId,
-            platformResponse.subscription._id
-        );
         return {
-            platform_subscription_id: response.subscription._id,
+            platform_subscription_id: platformResponse.subscription._id,
             redirect_url: platformResponse.confirm_url
         }
     };
 
+    /**
+     * @typedef {Promise<{
+     *  success: boolean,
+     *  seller_subscription: null | SubscriptionSchema
+     *  message: string,
+     * }>} SubscriptionUpdate
+     * 
+     * @param {string | number} companyId 
+     * @param {null | string | number} platformSubscriptionId mongoDB ObjectIdLike
+     * @param {*} platformClient 
+     * @returns {SubscriptionUpdate} If the subscription was updated
+     */
     async function updateSubscriptionStatus(companyId, platformSubscriptionId, platformClient) {
             let success = false;
             let message = "";
+            if (!platformSubscriptionId || platformSubscriptionId === 'undefined') {
+                message = 'Cannot update free subscription';
+                return {
+                    success,
+                    seller_subscription: null,
+                    message,
+                }
+            }
             companyId = Number(companyId);
             const sellerSubscription = await subscriptionModel.getSubscriptionByPlatformId(platformSubscriptionId, companyId);
             const existingSubscription = await subscriptionModel.getActiveSubscription(companyId);

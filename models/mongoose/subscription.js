@@ -13,14 +13,23 @@ const schema = new Schema({
         required: true,
         immutable: true
     },
+    /**
+     * @todo discuss
+     * On the billing service, `status` is defined as `string` and `nullable`
+     * Will this cause mongoose type issues?
+     * However, we have seen only 3 status `pending`, `active`, `expired` coming from billing service 
+     */
     status: {
         type: String,
         required: true,
-        enum: ["pending", "active", "cancelled"]
+        enum: ["pending", "active", "cancelled", "expired"]
     },
+    /**
+     * ObjectID returned from platform after subscription
+     * will be empty for free subscription
+     */
     platform_subscription_id: {
         type: ObjectId,
-        required: true
     },
     plan_id: {
         type: ObjectId,
@@ -82,6 +91,14 @@ class SubscriptionModel extends BaseSubscriptionModel{
         }));
     }
 
+    async createFreeSubscription(companyId, planId) {
+        return new Subscription (await this.model.create({
+            company_id: companyId,
+            status: 'active',
+            plan_id: planId,
+        }));
+    }
+
     async updateSubscription(subscription) {
         const dbSubscription = await this.model.findOne({
             company_id: subscription.company_id,
@@ -106,9 +123,15 @@ class SubscriptionModel extends BaseSubscriptionModel{
         return new Subscription(dbSubscription.toObject());
     }
 
-    async cancelSubscription(subscriptionId) {
+    /**
+     * Sets the existing subscription `status` to `active` or `expired`
+     * @param {string | number | Types.ObjectId} subscriptionId 
+     * @param {undefined | 'expired' | 'cancelled'} status
+     * @returns {Subscription} Subscription Object
+     */
+    async cancelSubscription(subscriptionId, status = 'cancelled') {
         const dbSubscription = await this.model.findOne({ _id: new ObjectId(subscriptionId) })
-        dbSubscription.status = 'cancelled';
+        dbSubscription.status = status;
         dbSubscription.cancelled_on = (new Date()).toISOString();
         await dbSubscription.save();
         return new Subscription(dbSubscription.toObject());
