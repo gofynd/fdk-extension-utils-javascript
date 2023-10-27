@@ -30,9 +30,9 @@ module.exports = (config, models) => {
              * There are more properties available, but we need only two here.
              * For the whole list checkout [EntitySubscription]{@link https://github.com/gofynd/fdk-client-javascript/blob/43aeeeceef69edb64fcb92db28e77b2831878efa/documentation/platform/BILLING.md#EntitySubscription }
              */
-            const platformSubscriptionData = platformClient.billing.getSubscriptionCharge({
+            const platformSubscriptionData = await platformClient.billing.getSubscriptionCharge({
                 extensionId: config.extension_id,
-                subscriptionId: sellerSubscription?.toString() ?? ''
+                subscriptionId: sellerSubscription.id
             });
             if (!platformSubscriptionData) {
                 /**
