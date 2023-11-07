@@ -6,7 +6,7 @@ const subscriptionSchema = Joi.object().keys({
     company_id: Joi.number(),
     status: Joi.string().required(), 
     plan_id: Joi.string().required(), 
-    platform_subscription_id: Joi.string().required(), 
+    platform_subscription_id: Joi.string(), 
     activated_on: Joi.string(), 
     cancelled_on: Joi.string(), 
     created_at: Joi.string().required(),
