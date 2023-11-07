@@ -6,6 +6,7 @@ const deepExtend = require("deep-extend");
 const { omit } = require("../../helpers/common");
 const Subscription = require("../entities/subscription");
 const BaseSubscriptionModel = require("../base-models/base_subscription_model");
+const { SubscriptionStatus } = require("../../helpers/constants");
 
 const schema = new Schema({
     company_id: {
@@ -16,11 +17,14 @@ const schema = new Schema({
     status: {
         type: String,
         required: true,
-        enum: ["pending", "active", "cancelled"]
+        enum: Object.values(SubscriptionStatus)
     },
+    /**
+     * ObjectID returned from platform after subscription
+     * will be empty for free subscription
+     */
     platform_subscription_id: {
         type: ObjectId,
-        required: true
     },
     plan_id: {
         type: ObjectId,
@@ -50,7 +54,7 @@ class SubscriptionModel extends BaseSubscriptionModel{
     }
 
     async getActiveSubscription(companyId) {
-        const dbSubscription = await this.model.findOne({ company_id: companyId, status: "active" });
+        const dbSubscription = await this.model.findOne({ company_id: companyId, status: SubscriptionStatus.active });
         if(!dbSubscription) {
             return dbSubscription;
         }
@@ -77,36 +81,52 @@ class SubscriptionModel extends BaseSubscriptionModel{
         return new Subscription (await this.model.create({
             company_id: companyId,
             plan_id: planId,
-            status: 'pending',
-            platform_subscription_id: ObjectId(platformSubscriptionId)
+            status: SubscriptionStatus.pending,
+            platform_subscription_id: new ObjectId(platformSubscriptionId)
+        }));
+    }
+
+    async createFreeSubscription(companyId, planId) {
+        return new Subscription (await this.model.create({
+            company_id: companyId,
+            status: SubscriptionStatus.active,
+            plan_id: planId,
         }));
     }
 
     async updateSubscription(subscription) {
-        const dbSubscription = await this.model.findOne({ company_id: subscription.company_id, platform_subscription_id: ObjectId(subscription.platform_subscription_id) });
+        const dbSubscription = await this.model.findOne({
+            company_id: subscription.company_id,
+            platform_subscription_id: new ObjectId(subscription.platform_subscription_id) 
+        });
         deepExtend(dbSubscription, omit(subscription, ["company_id", "platform_subscription_id"]));
         await dbSubscription.save();
         return new Subscription(dbSubscription.toObject())
     }
 
     async removeSubscription(subscriptionId) {
-        const dbSubscription = await this.model.findOne({ _id: ObjectId(subscriptionId) });
-        await dbSubscription.remove();
+        const dbSubscription = await this.model.findByIdAndDelete(new ObjectId(subscriptionId));
         return new Subscription(dbSubscription.toObject());
     }
 
     async activateSubscription(subscriptionId, platformSubscriptionId) {
-        const dbSubscription = await this.model.findOne({ _id: ObjectId(subscriptionId) });
-        dbSubscription.status = 'active';
+        const dbSubscription = await this.model.findOne({ _id: new ObjectId(subscriptionId) });
+        dbSubscription.status = SubscriptionStatus.active;
         dbSubscription.platform_subscription_id = platformSubscriptionId;
         dbSubscription.activated_on = (new Date()).toISOString();
         await dbSubscription.save();
         return new Subscription(dbSubscription.toObject());
     }
 
-    async cancelSubscription(subscriptionId) {
-        const dbSubscription = await this.model.findOne({ _id: ObjectId(subscriptionId) })
-        dbSubscription.status = 'cancelled';
+    /**
+     * Sets the existing subscription `status` to `cancelled` or `expired`
+     * @param {string | number | Types.ObjectId} subscriptionId 
+     * @param {undefined | 'expired' | 'cancelled'} status if `status` is undefined, the default value is `cancelled`
+     * @returns {Subscription} Subscription Object
+     */
+    async cancelSubscription(subscriptionId, status = SubscriptionStatus.cancelled) {
+        const dbSubscription = await this.model.findOne({ _id: new ObjectId(subscriptionId) })
+        dbSubscription.status = status;
         dbSubscription.cancelled_on = (new Date()).toISOString();
         await dbSubscription.save();
         return new Subscription(dbSubscription.toObject());

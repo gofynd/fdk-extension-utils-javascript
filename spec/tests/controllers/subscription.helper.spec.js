@@ -5,6 +5,7 @@ const { clearData } = require("../../helpers/setup_db");
 const planFixture = require("../../fixtures/plan");
 const subscriptionFixture = require("../../fixtures/subscription");
 const ObjectId = require("mongoose").Types.ObjectId;
+const { SubscriptionStatus } = require("../../../helpers/constants");
 
 describe("Subscription helper", () => {
     
@@ -48,7 +49,7 @@ describe("Subscription helper", () => {
         const createChargeSpy = spyOn(platformClientMock.billing, "createSubscriptionCharge").and.returnValue({
             "subscription": {
                 "_id": platformId,
-                "status": "pending",
+                "status": SubscriptionStatus.pending,
             },
             "confirm_url": "test_url"
         });
@@ -59,7 +60,7 @@ describe("Subscription helper", () => {
         expect(data.platform_subscription_id).toBe(platformId);
         expect(data.redirect_url).toBe("test_url");
         expect(dbSubscription._id).toBeTruthy();
-        expect(dbSubscription.status).toBe("pending");
+        expect(dbSubscription.status).toBe(SubscriptionStatus.pending);
         expect(argsObj.extensionId).toBe("API_KEY");
         expect(argsObj.body.line_items.length).toBe(1);
         expect(argsObj.body.line_items[0].name).toBe(dbPlan.name);
@@ -69,20 +70,20 @@ describe("Subscription helper", () => {
         const platformId = new ObjectId();
         const dbSubscription = await this.fdk_billing_instance.subscriptionModel.model.create({
             ...subscriptionFixture,
-            status: "pending",
+            status: SubscriptionStatus.pending,
             plan_id: new ObjectId(),
             platform_subscription_id: platformId
         });
         const getChargeSpy = spyOn(platformClientMock.billing, "getSubscriptionCharge").and.returnValue({
                 "_id": platformId,
-                "status": "active"
+                "status": SubscriptionStatus.active
         });
         const data = await this.fdk_billing_instance.updateSubscriptionStatus(1, dbSubscription.platform_subscription_id.toString(), platformClientMock);
 
         const argsObj = getChargeSpy.calls.mostRecent().args[0];
         expect(data.success).toBeTrue()
         expect(data.seller_subscription.platform_subscription_id).toBe(platformId.toString());
-        expect(data.seller_subscription.status).toBe("active");
+        expect(data.seller_subscription.status).toBe(SubscriptionStatus.active);
         expect(data.message).toBeTruthy();
         expect(argsObj.extensionId).toBe("API_KEY");
     });
@@ -91,7 +92,7 @@ describe("Subscription helper", () => {
         const platformId = new ObjectId();
         await this.fdk_billing_instance.subscriptionModel.model.create({
             ...subscriptionFixture,
-            status: "pending",
+            status: SubscriptionStatus.pending,
             plan_id: new ObjectId(),
         });
         const data = await this.fdk_billing_instance.updateSubscriptionStatus(1, platformId.toString(), platformClientMock);
@@ -107,7 +108,7 @@ describe("Subscription helper", () => {
         const platformId = new ObjectId();
         await this.fdk_billing_instance.subscriptionModel.model.create({
             ...subscriptionFixture,
-            status: "pending",
+            status: SubscriptionStatus.pending,
             plan_id: new ObjectId(),
             platform_subscription_id: platformId
         });
@@ -129,13 +130,13 @@ describe("Subscription helper", () => {
         const platformId = new ObjectId();
         const subscription = await this.fdk_billing_instance.subscriptionModel.model.create({
             ...subscriptionFixture,
-            status: "pending",
+            status: SubscriptionStatus.pending,
             plan_id: new ObjectId(),
             platform_subscription_id: platformId
         });
         const getChargeSpy = spyOn(platformClientMock.billing, "getSubscriptionCharge").and.returnValue({
             "_id": platformId,
-            "status": "active"
+            "status": SubscriptionStatus.active
         });
 
         const data = await this.fdk_billing_instance.updateSubscriptionStatus(1, platformId.toString(), platformClientMock);
@@ -144,9 +145,9 @@ describe("Subscription helper", () => {
         
         expect(data.success).toBeTrue()
         expect(data.seller_subscription.id).toBe(subscription._id.toString());
-        expect(data.seller_subscription.status).toBe("active");
+        expect(data.seller_subscription.status).toBe(SubscriptionStatus.active);
         expect(data.message).toBeTruthy();
-        expect(oldSubscription.status).toBe("cancelled");
+        expect(oldSubscription.status).toBe(SubscriptionStatus.cancelled);
         expect(getChargeSpy).toHaveBeenCalled();
     });
 
@@ -155,13 +156,13 @@ describe("Subscription helper", () => {
         const platformId = new ObjectId();
         await this.fdk_billing_instance.subscriptionModel.model.create({
             ...subscriptionFixture,
-            status: "pending",
+            status: SubscriptionStatus.pending,
             plan_id: new ObjectId(),
             platform_subscription_id: platformId
         });
         const getChargeSpy = spyOn(platformClientMock.billing, "getSubscriptionCharge").and.returnValue({
             "_id": platformId,
-            "status": "cancelled"
+            "status": SubscriptionStatus.cancelled,
         });
 
         const data = await this.fdk_billing_instance.updateSubscriptionStatus(1, platformId.toString(), platformClientMock);
@@ -183,7 +184,7 @@ describe("Subscription helper", () => {
         const data = await this.fdk_billing_instance.getActiveSubscription(1);
         expect(dbSubscription._id.toString()).toBe(data.id);
         expect(data.platform_subscription_id).toBe(platformId.toString());
-        expect(data.status).toBe("active");
+        expect(data.status).toBe(SubscriptionStatus.active);
     });
 
     it("Get active subscription: No active subscription", async () => {

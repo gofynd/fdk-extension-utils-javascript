@@ -28,7 +28,7 @@ describe("Plan mongoose model", () => {
     });
 
     it("Get plan by id: Not found", async () => {
-        const planId = ObjectId();
+        const planId = new ObjectId();
         const data = await this.fdk_billing_instance.planModel.getPlanById(planId);
         expect(data).toBeNull();
     });
