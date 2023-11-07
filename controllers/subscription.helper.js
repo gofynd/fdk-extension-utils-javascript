@@ -145,7 +145,7 @@ module.exports = (config, models) => {
             }
             const platformSubscriptionData = await platformClient.billing.getSubscriptionCharge({
                 "extensionId": config.extension_id,
-                "subscriptionId": sellerSubscription.platform_subscription_id.toString()
+                "subscriptionId": sellerSubscription.platform_subscription_id?.toString()
             });
             if (!platformSubscriptionData) {
                 return {

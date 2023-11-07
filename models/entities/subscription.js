@@ -20,7 +20,7 @@ class Subscription {
         this.company_id = obj.company_id;
         this.status = obj.status;
         this.plan_id = obj.plan_id.toString();
-        this.platform_subscription_id = obj.platform_subscription_id.toString();
+        this.platform_subscription_id = obj.platform_subscription_id?.toString();
         this.activated_on = obj.activated_on instanceof Date? obj.activated_on.toISOString(): obj.activated_on;
         this.cancelled_on = obj.cancelled_on instanceof Date? obj.cancelled_on.toISOString(): obj.cancelled_on;
         this.created_at = obj.created_at instanceof Date? obj.created_at.toISOString(): obj.created_at;
