@@ -6,7 +6,6 @@ const mongoose = require('mongoose');
 const options = {
   appName: 'fdk-billing-javascript',
   readPreference: 'secondaryPreferred',
-  keepAlive: true,
   serverSelectionTimeoutMS: 5000,
   connectTimeoutMS: 5000,
 };

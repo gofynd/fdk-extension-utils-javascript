@@ -69,7 +69,7 @@ class PlanModel extends BasePlanModel {
     }
 
     async getPlanById(planId) {
-        const dbPlan = await this.model.findOne({ _id: ObjectId(planId)});
+        const dbPlan = await this.model.findOne({ _id: new ObjectId(planId)});
         if(!dbPlan) {
             return dbPlan;
         }
@@ -81,7 +81,7 @@ class PlanModel extends BasePlanModel {
     }
 
     async updatePlan(planId, planData) {
-        const dbPlan = await this.model.findOne({ _id: ObjectId(planId) });
+        const dbPlan = await this.model.findOne({ _id: new ObjectId(planId) });
         deepExtend(dbPlan, planData);
         await dbPlan.save();
         return new Plan(dbPlan.toObject());
